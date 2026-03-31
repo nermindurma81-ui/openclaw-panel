@@ -1,74 +1,28 @@
-#!/usr/bin/env node
 const express = require('express');
-const { createProxyMiddleware } = require('http-proxy-middleware');
 const path = require('path');
+const cors = require('cors');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
-const GATEWAY_URL = process.env.GATEWAY_URL;
-const GATEWAY_TOKEN = process.env.GATEWAY_TOKEN;
+const PORT = process.env.PORT || 3000; // Vrlo bitno: Railway dodeljuje port ovako
 
-if (!GATEWAY_URL) {
-  console.error('❌ GATEWAY_URL is required');
-  process.exit(1);
-}
+// Middleware
+app.use(cors());
+app.use(express.json());
+// Služi statičke fajlove iz foldera 'public' (tvoj HTML/CSS/JS)
+app.use(express.static(path.join(__dirname, 'public')));
 
-// ✅ HEALTHCHECK - UVIJEK 200, najjednostavniji mogući
-app.get('/health', (req, res) => {
-  res.status(200).send('OK');
+// --- ZDRAVSTVENA PROVERA (Healthcheck) ---
+// Railway ovo poziva da vidi da li server radi
+app.get('/', (req, res) => {
+  res.json({ status: 'ok', message: 'OpenClaw Panel is running' });
 });
 
-// Status endpoint (za debugging)
-app.get('/api/status', async (req, res) => {
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
-    
-    const response = await fetch(`${GATEWAY_URL}/health`, {
-      signal: controller.signal
-    });
-    
-    clearTimeout(timeout);
-    const text = await response.text();
-    
-    res.json({ 
-      status: 'ok',
-      gateway: text === 'OK' ? 'online' : 'offline',
-      gatewayUrl: GATEWAY_URL
-    });
-  } catch (err) {
-    res.json({ 
-      status: 'ok',
-      gateway: 'offline',
-      error: err.message
-    });
-  }
-});
+// --- TVOJI API RUTOVI ---
+// Ako imaš dodatne rute u svom starom kodu, prebaci ih ovde.
+// Primer:
+// app.get('/api/data', (req, res) => { ... });
 
-// Proxy all API calls to gateway
-app.use('/api', createProxyMiddleware({
-  target: GATEWAY_URL,
-  changeOrigin: true,
-  pathRewrite: { '^/api': '' },
-  onProxyReq: (proxyReq, req) => {
-    proxyReq.setHeader('Authorization', `Bearer ${GATEWAY_TOKEN}`);
-  },
-  onError: (err, req, res) => {
-    console.error('Proxy error:', err.message);
-    res.status(502).json({ error: 'Gateway unavailable' });
-  }
-}));
-
-// Serve static files if they exist
-app.use(express.static('public'));
-
-// SPA fallback
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// ✅ KRITIČNO: Pokreni server ODMAH na 0.0.0.0
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Panel running on port ${PORT}`);
-  console.log(`Gateway URL: ${GATEWAY_URL}`);
+// Pokretanje servera
+app.listen(PORT, () => {
+  console.log(`✅ Server je pokrenut na portu ${PORT}`);
 });
