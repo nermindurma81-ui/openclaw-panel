@@ -1,28 +1,31 @@
 const express = require('express');
 const path = require('path');
-const cors = require('cors');
 
 const app = express();
-const PORT = process.env.PORT || 3000; // Vrlo bitno: Railway dodeljuje port ovako
+const PORT = process.env.PORT || 3000;
 
-// Middleware
-app.use(cors());
-app.use(express.json());
-// Služi statičke fajlove iz foldera 'public' (tvoj HTML/CSS/JS)
-app.use(express.static(path.join(__dirname, 'public')));
-
-// --- ZDRAVSTVENA PROVERA (Healthcheck) ---
-// Railway ovo poziva da vidi da li server radi
-app.get('/', (req, res) => {
-  res.json({ status: 'ok', message: 'OpenClaw Panel is running' });
+// --- RUTA ZA RAILWAY HEALTHCHECK (/health) ---
+// Ovo je MORA biti tu, inače će Railway prijavljivati grešku
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
 });
 
-// --- TVOJI API RUTOVI ---
-// Ako imaš dodatne rute u svom starom kodu, prebaci ih ovde.
-// Primer:
-// app.get('/api/data', (req, res) => { ... });
+// --- Osnovna ruta (/) ---
+// Ovo služi za testiranje u browseru
+app.get('/', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    message: 'Panel is running',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// --- Služenje statičkih fajlova ---
+// Ako imaš folder 'public' sa HTML/CSS/JS
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Pokretanje servera
 app.listen(PORT, () => {
-  console.log(`✅ Server je pokrenut na portu ${PORT}`);
+  console.log(`✅ Server je uspešno pokrenut na portu ${PORT}`);
+  console.log(`🚀 Healthcheck dostupan na: http://localhost:${PORT}/health`);
 });
